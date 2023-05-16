@@ -178,25 +178,12 @@ func parse(l *Lexer, min_bp int) Expression {
 	return lhs
 }
 
-func add(a int, b int) int {
-	return a + b
-}
-func subtract(a int, b int) int {
-	return a - b
-}
-func multiply(a int, b int) int {
-	return a * b
-}
-func division(a int, b int) int {
-	return a / b
-}
-
 func evalExpression(e Expression) int {
 	operationFunctionMap := map[string]func(int, int) int{
-		"+": add,
-		"-": subtract,
-		"*": multiply,
-		"/": division,
+		"+": func(a, b int) int { return a + b },
+		"-": func(a, b int) int { return a - b },
+		"*": func(a, b int) int { return a * b },
+		"/": func(a, b int) int { return a / b },
 	}
 	int_value, ok := e.(IntegerToken)
 	if ok {
@@ -204,7 +191,7 @@ func evalExpression(e Expression) int {
 	}
 	expression, ok := e.(InfixExpression)
 	if !ok {
-    panic("Undesired behaviour")
+		panic("Undesired behaviour")
 	}
 	return operationFunctionMap[expression.op](evalExpression(expression.lhs), evalExpression(expression.rhs))
 
@@ -212,11 +199,11 @@ func evalExpression(e Expression) int {
 
 func main() {
 	var a string
-  in := bufio.NewReader(os.Stdin)
-  a, err := in.ReadString('\n')
-  if err != nil {
-    panic("Error reading string")
-  }
+	in := bufio.NewReader(os.Stdin)
+	a, err := in.ReadString('\n')
+	if err != nil {
+		panic("Error reading string")
+	}
 	lexer := New(a)
 	parsed := parse(lexer, 0)
 	parsed_infix, ok := (parsed).(InfixExpression)
