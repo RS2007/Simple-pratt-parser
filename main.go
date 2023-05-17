@@ -18,7 +18,7 @@ type TokenArray []Token
 func (c TokenArray) Reverse() {
 	s := 0
 	e := len(c) - 1
-	for e-s > 1 {
+	for e-s >= 1 {
 		temp := c[s]
 		c[s] = c[e]
 		c[e] = temp
@@ -30,6 +30,7 @@ func (c TokenArray) Reverse() {
 const (
 	Integer TokenType = iota
 	Operand
+	Prefix
 )
 
 type Token interface {
@@ -49,6 +50,14 @@ type OperatorToken struct {
 	literal string
 }
 
+type PrefixToken struct {
+	literal string
+}
+
+func (i PrefixToken) getTokenType() TokenType {
+	return Prefix
+}
+
 func (i IntegerToken) getTokenType() TokenType {
 	return Integer
 }
@@ -65,6 +74,10 @@ func (i OperatorToken) getExpressionValue() string {
 	return i.literal
 }
 
+func (i PrefixToken) getExpressionValue() string {
+	return i.literal
+}
+
 type Lexer struct {
 	tokens TokenArray
 }
@@ -73,6 +86,15 @@ type InfixExpression struct {
 	lhs Expression
 	rhs Expression
 	op  string
+}
+
+type PrefixExpression struct {
+	op  string
+	rhs Expression
+}
+
+func (i PrefixExpression) getExpressionValue() string {
+	return i.op + strconv.Itoa(evalExpression(i.rhs))
 }
 
 func (i InfixExpression) getExpressionValue() string {
@@ -126,7 +148,7 @@ func New(input string) *Lexer {
 
 func (l *Lexer) next() Token {
 	if len(l.tokens) == 0 {
-		panic("Error: tokens empty")
+		return nil
 	}
 	lastToken := l.tokens[len(l.tokens)-1]
 	l.tokens = l.tokens[:len(l.tokens)-1]
@@ -147,12 +169,27 @@ func parse(l *Lexer, min_bp int) Expression {
 		"*": {3, 4},
 		"/": {3, 4},
 	}
+
+	prefixBindingPowerMap := map[string][]int{
+		"+": {0, 5},
+		"-": {0, 5},
+	}
 	var lhs Expression
 
-	lhs, ok := l.next().(IntegerToken)
-
-	if !ok {
-		panic("Expression should start with an integer")
+	lhsExpr := l.next()
+	switch lhsExpr.getTokenType() {
+	case Integer:
+		lhs, _ = lhsExpr.(IntegerToken)
+		break
+	case Operand:
+		lhs_prefix_token, _ := lhsExpr.(OperatorToken)
+		r_bp := prefixBindingPowerMap[lhs_prefix_token.literal][1]
+		rhs := parse(l, r_bp)
+		lhs = PrefixExpression{
+			op:  lhs_prefix_token.literal,
+			rhs: rhs,
+		}
+		break
 	}
 	for {
 		if l.peek() == nil {
@@ -178,6 +215,16 @@ func parse(l *Lexer, min_bp int) Expression {
 	return lhs
 }
 
+func evalPrefix(e PrefixExpression) int {
+	switch e.op {
+	case "+":
+		return (1) * evalExpression(e.rhs)
+	case "-":
+		return (-1) * evalExpression(e.rhs)
+	}
+	panic("Should not reach here")
+}
+
 func evalExpression(e Expression) int {
 	operationFunctionMap := map[string]func(int, int) int{
 		"+": func(a, b int) int { return a + b },
@@ -188,6 +235,11 @@ func evalExpression(e Expression) int {
 	int_value, ok := e.(IntegerToken)
 	if ok {
 		return int(int_value.value)
+	}
+	prefix_expr, ok := e.(PrefixExpression)
+
+	if ok {
+		return evalPrefix(prefix_expr)
 	}
 	expression, ok := e.(InfixExpression)
 	if !ok {
@@ -210,7 +262,12 @@ func main() {
 	if !ok {
 		parsed_int, ok := (parsed).(IntegerToken)
 		if !ok {
-			panic("Undesired behaviour")
+			parsed_prefix, ok := (parsed).(PrefixExpression)
+			if !ok {
+				panic("Undesired behaviour")
+			}
+			fmt.Println(evalExpression(parsed_prefix))
+			return
 		}
 		fmt.Println(parsed_int.getExpressionValue())
 		return
