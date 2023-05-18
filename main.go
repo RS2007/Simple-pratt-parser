@@ -98,21 +98,7 @@ func (i PrefixExpression) getExpressionValue() string {
 }
 
 func (i InfixExpression) getExpressionValue() string {
-	returnString := "("
-	// for _, expr := range i.rhs {
-	// 	returnString += " ("
-	// 	expr_infix, ok := (expr).(InfixExpression)
-	// 	if !ok {
-	// 		expr_int, ok := (expr).(IntegerToken)
-	// 		if !ok {
-	// 			panic("Undesired behaviour")
-	// 		}
-	// 		returnString += " " + strconv.Itoa(int(expr_int.value))
-	// 	}
-	// 	returnString += " " + expr_infix.getExpressionValue()
-	// }
-
-	return returnString
+	return ""
 }
 
 func New(input string) *Lexer {
@@ -232,21 +218,15 @@ func evalExpression(e Expression) int {
 		"*": func(a, b int) int { return a * b },
 		"/": func(a, b int) int { return a / b },
 	}
-	int_value, ok := e.(IntegerToken)
-	if ok {
-		return int(int_value.value)
+	switch v := e.(type) {
+	case IntegerToken:
+		return int(v.value)
+	case PrefixExpression:
+		return evalPrefix(v)
+	case InfixExpression:
+		return operationFunctionMap[v.op](evalExpression(v.lhs), evalExpression(v.rhs))
 	}
-	prefix_expr, ok := e.(PrefixExpression)
-
-	if ok {
-		return evalPrefix(prefix_expr)
-	}
-	expression, ok := e.(InfixExpression)
-	if !ok {
-		panic("Undesired behaviour")
-	}
-	return operationFunctionMap[expression.op](evalExpression(expression.lhs), evalExpression(expression.rhs))
-
+	return 0
 }
 
 func main() {
@@ -258,19 +238,15 @@ func main() {
 	}
 	lexer := New(a)
 	parsed := parse(lexer, 0)
-	parsed_infix, ok := (parsed).(InfixExpression)
-	if !ok {
-		parsed_int, ok := (parsed).(IntegerToken)
-		if !ok {
-			parsed_prefix, ok := (parsed).(PrefixExpression)
-			if !ok {
-				panic("Undesired behaviour")
-			}
-			fmt.Println(evalExpression(parsed_prefix))
-			return
-		}
-		fmt.Println(parsed_int.getExpressionValue())
+	switch parsed.(type) {
+	case InfixExpression:
+		fmt.Println(evalExpression(parsed))
+		return
+	case IntegerToken:
+		fmt.Println(evalExpression(parsed))
+		return
+	case PrefixExpression:
+		fmt.Println(evalExpression(parsed))
 		return
 	}
-	fmt.Println(evalExpression(parsed_infix))
 }
