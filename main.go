@@ -169,6 +169,16 @@ func parse(l *Lexer, min_bp int) Expression {
 		break
 	case Operand:
 		lhs_prefix_token, _ := lhsExpr.(OperatorToken)
+		if lhs_prefix_token.literal == "(" {
+			l.next()
+
+			expr := parse(l, 0)
+			if !(l.peek().getExpressionValue() == ")") {
+				panic("Expected right paren")
+			}
+			lhs = expr
+
+		}
 		r_bp := prefixBindingPowerMap[lhs_prefix_token.literal][1]
 		rhs := parse(l, r_bp)
 		lhs = PrefixExpression{
@@ -238,15 +248,5 @@ func main() {
 	}
 	lexer := New(a)
 	parsed := parse(lexer, 0)
-	switch parsed.(type) {
-	case InfixExpression:
-		fmt.Println(evalExpression(parsed))
-		return
-	case IntegerToken:
-		fmt.Println(evalExpression(parsed))
-		return
-	case PrefixExpression:
-		fmt.Println(evalExpression(parsed))
-		return
-	}
+	fmt.Println(evalExpression(parsed))
 }
